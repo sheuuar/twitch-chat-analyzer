@@ -1,5 +1,6 @@
 import streamlit as st
 from collections import defaultdict
+import pandas as pd
 
 st.title("🔥 Stream Chat Highlight Analyzer")
 st.write("Upload your Twitch chat log text file to instantly get the top unique VOD peak timestamps.")
@@ -40,14 +41,12 @@ if uploaded_file is not None:
             continue
 
     if minute_counts:
-        st.success(f"Successfully processed {valid_lines} chat messages!")
+        st.success(f"Successfully processed {valid_lines:,} chat messages!")
         
         sorted_peaks = sorted(minute_counts.items(), key=lambda x: x[1], reverse=True)
         
-        st.subheader("Top 25 Unique VOD Peak Timestamps:")
         shown_blocks = set()
-        count_printed = 0
-
+        table_data = []
         report_text = "🔥 TOP 25 UNIQUE VOD PEAK TIMESTAMPS:\n\n"
 
         for minute_mark, count in sorted_peaks:
@@ -57,16 +56,26 @@ if uploaded_file is not None:
             hrs = minute_mark // 60
             mins = minute_mark % 60
             
-            line_str = f"VOD Time: {hrs:02d}:{mins:02d}:00 — {count} messages"
-            st.markdown(f"- **{line_str}**")
-            report_text += f"- {line_str}\n"
+            timestamp_str = f"{hrs:02d}:{mins:02d}:00"
+            table_data.append({"VOD Timestamp": timestamp_str, "Message Volume": count})
+            report_text += f"- VOD Time: {timestamp_str} — {count} messages\n"
             
             shown_blocks.add(minute_mark)
-            count_printed += 1
-            if count_printed >= 25:
+            if len(table_data) >= 25:
                 break
 
-        # --- ADDED: DOWNLOAD BUTTON ---
+        # Display Top Metrics
+        col1, col2 = st.columns(2)
+        col1.metric("Total Messages Scanned", f"{valid_lines:,}")
+        col2.metric("Highlights Extracted", f"{len(table_data)}")
+
+        st.subheader("Top Unique VOD Peak Timestamps:")
+        
+        # Display as a clean, professional dataframe table
+        df_peaks = pd.DataFrame(table_data)
+        st.dataframe(df_peaks, use_container_width=True)
+
+        # Download Button
         st.download_button(
             label="📥 Download Report (.txt)",
             data=report_text,
@@ -74,4 +83,4 @@ if uploaded_file is not None:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps. Check your chat text file format.")
+        st.warning("Could not find valid timestamps. Check your chat text file format.")our chat text file format.")
