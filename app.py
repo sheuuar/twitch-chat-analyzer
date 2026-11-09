@@ -1,6 +1,7 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
+import requests
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -11,36 +12,59 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Extract unique VOD peak timestamps instantly by uploading your chat log or grabbing it via VOD link.")
+st.markdown("Extract unique VOD peak timestamps by pasting a Twitch VOD link or uploading your chat log file.")
 
 # Option Selection for Input
-input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
+input_method = st.radio("Choose Input Method:", ["Paste Twitch VOD Link", "Upload Chat Log (.txt)"])
 
 content = None
 
-if input_method == "Upload Chat Log (.txt)":
-    uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
-    if uploaded_file is not None:
-        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
-
-else:
-    st.markdown("### 🔗 VOD Link & Chat Download Helper")
-    st.write("Since Twitch blocks direct server-side chat scraping, use this quick workflow to grab your chat log if you don't have it yet:")
-    
+if input_method == "Paste Twitch VOD Link":
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     
     if vod_url:
-        st.info("Because Twitch requires secure authorization tokens to download VOD chats directly, click below to instantly open an automated downloader or export your chat log:")
-        
-        # Action button to help grab the chat log from the URL quickly
-        st.link_button("📥 Open Chat Exporter Tool for this VOD", vod_url)
-        
-        st.markdown("---")
-        st.write("Once you download your `chat.log` file from the link above, drop it right into the file uploader below to analyze it instantly!")
-        
-        fallback_file = st.file_uploader("Drop your downloaded VOD chat log here (.txt)", type=["txt"], key="fallback_upload")
-        if fallback_file is not None:
-            content = fallback_file.getvalue().decode("utf-8", errors="ignore").splitlines()
+        if st.button("🚀 Download & Analyze VOD Chat"):
+            try:
+                # Extract Video ID from standard Twitch URLs
+                clean_url = vod_url.split("?")[0]
+                video_id = clean_url.rstrip("/").split("/")[-1]
+                
+                if video_id.isdigit():
+                    with st.spinner(f"Fetching chat comments for VOD ID {video_id} from Twitch..."):
+                        # Public Twitch Helix/v5 comment endpoint
+                        api_url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
+                        headers = {"Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu"}
+                        
+                        response = requests.get(api_url, headers=headers)
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            comments = data.get("comments", [])
+                            
+                            extracted_lines = []
+                            for comment in comments:
+                                offset = comment.get("content_offset_seconds", 0)
+                                hours = int(offset // 3600)
+                                minutes = int((offset % 3600) // 60)
+                                seconds = int(offset % 60)
+                                time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
+                                
+                                message_body = comment.get("message", {}).get("body", "")
+                                extracted_lines.append(f"{time_str} {message_body}")
+                                
+                            content = extracted_lines
+                            st.success(f"Successfully downloaded and processed {len(content):,} messages from the VOD link!")
+                        else:
+                            st.error("Twitch restricted direct fetching for this video. Use the 'Upload Chat Log (.txt)' option instead!")
+                else:
+                    st.warning("Please enter a valid Twitch VOD URL ending in the video ID number.")
+            except Exception as e:
+                st.error(f"Error downloading chat: {e}")
+
+else:
+    uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
+    if uploaded_file is not None:
+        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
@@ -113,4 +137,4 @@ if content is not None and len(content) > 0:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps from this source. Check your file format.")
+        st.warning("Could not find valid timestamps from this source.")
