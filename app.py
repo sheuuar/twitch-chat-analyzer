@@ -28,25 +28,22 @@ if input_method == "Paste Twitch VOD Link":
         if st.button("🚀 Download & Analyze VOD Chat"):
             with st.spinner("Downloading chat log from VOD link... Please wait."):
                 try:
-                    # Use yt-dlp to write the chat json file locally
-                    output_template = "temp_chat"
+                    # Output template for info json
+                    output_template = "twitch_vod_meta"
+                    
+                    # Use yt-dlp to write the info json containing comments
                     subprocess.run([
                         "yt-dlp", 
                         "--skip-download", 
-                        "--write-subs", 
-                        "--sub-format", "json", 
+                        "--write-info-json", 
                         "--output", output_template, 
                         vod_url
                     ], check=True, capture_output=True)
                     
-                    # Look for the downloaded subtitle/chat json file
-                    json_filename = None
-                    for file in os.listdir("."):
-                        if file.startswith(output_template) and file.endswith(".json"):
-                            json_filename = file
-                            break
+                    # Locate the generated info.json file
+                    json_filename = f"{output_template}.info.json"
                     
-                    if json_filename:
+                    if os.path.exists(json_filename):
                         with open(json_filename, "r", encoding="utf-8") as f:
                             chat_data = json.load(f)
                         
