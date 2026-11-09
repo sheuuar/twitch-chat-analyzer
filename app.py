@@ -2,8 +2,16 @@ import streamlit as st
 from collections import defaultdict
 import pandas as pd
 
+# Page Configuration
+st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
+
+# Sidebar settings for user control
+st.sidebar.header("⚙️ Analyzer Settings")
+top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_value=50, value=25)
+time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
+
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.write("Upload your Twitch chat log text file to instantly get the top unique VOD peak timestamps.")
+st.markdown("Upload your Twitch chat log text file to instantly extract unique VOD peak timestamps and engagement volumes.")
 
 uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
 
@@ -41,43 +49,43 @@ if uploaded_file is not None:
             continue
 
     if minute_counts:
-        st.success(f"Successfully processed {valid_lines:,} chat messages!")
+        # Display top-level metric cards for professional feel
+        col1, col2 = st.columns(2)
+        col1.metric("Total Messages Scanned", f"{valid_lines:,}")
         
         sorted_peaks = sorted(minute_counts.items(), key=lambda x: x[1], reverse=True)
         
         shown_blocks = set()
         table_data = []
-        report_text = "🔥 TOP 25 UNIQUE VOD PEAK TIMESTAMPS:\n\n"
+        report_text = f"🔥 TOP {top_n} UNIQUE VOD PEAK TIMESTAMPS:\n\n"
 
         for minute_mark, count in sorted_peaks:
-            if any(abs(minute_mark - existing) <= 2 for existing in shown_blocks):
+            if any(abs(minute_mark - existing) <= time_window for existing in shown_blocks):
                 continue
                 
             hrs = minute_mark // 60
             mins = minute_mark % 60
             
             timestamp_str = f"{hrs:02d}:{mins:02d}:00"
-            table_data.append({"VOD Timestamp": timestamp_str, "Message Volume": count})
+            table_data.append({"Rank": len(table_data) + 1, "VOD Timestamp": timestamp_str, "Message Volume": count})
             report_text += f"- VOD Time: {timestamp_str} — {count} messages\n"
             
             shown_blocks.add(minute_mark)
-            if len(table_data) >= 25:
+            if len(table_data) >= top_n:
                 break
 
-        # Display Top Metrics
-        col1, col2 = st.columns(2)
-        col1.metric("Total Messages Scanned", f"{valid_lines:,}")
         col2.metric("Highlights Extracted", f"{len(table_data)}")
-
-        st.subheader("Top Unique VOD Peak Timestamps:")
         
-        # Display as a clean, professional dataframe table
+        st.divider()
+        st.subheader("📊 Top VOD Peak Timestamps")
+        
+        # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
-        st.dataframe(df_peaks, use_container_width=True)
+        st.dataframe(df_peaks, use_container_width=True, hide_index=True)
 
-        # Download Button
+        # Download Report Button
         st.download_button(
-            label="📥 Download Report (.txt)",
+            label="📥 Download Highlight Report (.txt)",
             data=report_text,
             file_name="highlight_report.txt",
             mime="text/plain"
