@@ -14,37 +14,41 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Extract unique VOD peak timestamps by pasting a Twitch VOD link or uploading your chat log file.")
+st.markdown("Download a chat log from a Twitch VOD link, or upload your chat log file directly.")
 
 # Option Selection for Input
-input_method = st.radio("Choose Input Method:", ["Paste Twitch VOD Link", "Upload Chat Log (.txt)"])
+input_method = st.radio("Choose Input Method:", ["Download Chat Log from VOD Link", "Upload Chat Log (.txt)"])
 
 content = None
 
-if input_method == "Paste Twitch VOD Link":
+if input_method == "Download Chat Log from VOD Link":
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     
     if vod_url:
-        if st.button("🚀 Download & Analyze VOD Chat"):
-            with st.spinner("Downloading chat log from VOD link... Please wait."):
+        if st.button("🚀 Fetch & Generate Chat Log"):
+            with st.spinner("Downloading chat log from Twitch... Please wait."):
                 try:
-                    # Output template for info json
-                    output_template = "twitch_vod_meta"
+                    output_template = "twitch_chat_temp"
                     
-                    # Use yt-dlp to write the info json containing comments
+                    # Correctly tell yt-dlp to write chat subtitles/comments
                     subprocess.run([
                         "yt-dlp", 
                         "--skip-download", 
-                        "--write-info-json", 
+                        "--write-subs", 
+                        "--sub-format", "json", 
                         "--output", output_template, 
                         vod_url
                     ], check=True, capture_output=True)
                     
-                    # Locate the generated info.json file
-                    json_filename = f"{output_template}.info.json"
+                    # Find the generated chat json file
+                    chat_json_file = None
+                    for file in os.listdir("."):
+                        if file.startswith(output_template) and file.endswith(".json"):
+                            chat_json_file = file
+                            break
                     
-                    if os.path.exists(json_filename):
-                        with open(json_filename, "r", encoding="utf-8") as f:
+                    if chat_json_file:
+                        with open(chat_json_file, "r", encoding="utf-8") as f:
                             chat_data = json.load(f)
                         
                         extracted_lines = []
@@ -59,22 +63,34 @@ if input_method == "Paste Twitch VOD Link":
                             message_body = comment.get("message", {}).get("body", "")
                             extracted_lines.append(f"{time_str} {message_body}")
                         
-                        content = extracted_lines
+                        raw_chat_text = "\n".join(extracted_lines)
                         
-                        # Clean up the temporary file
-                        os.remove(json_filename)
+                        # Clean up temporary file
+                        os.remove(chat_json_file)
                         
-                        st.success(f"Successfully downloaded and processed {len(content):,} messages from the link!")
+                        if len(extracted_lines) > 0:
+                            st.success(f"Successfully generated chat log with {len(extracted_lines):,} messages!")
+                            
+                            # Provide the download button for the user to save the chat log file
+                            st.download_button(
+                                label="📥 Download Extracted Chat Log (.txt)",
+                                data=raw_chat_text,
+                                file_name="twitch_chat_log.txt",
+                                mime="text/plain"
+                            )
+                        else:
+                            st.warning("Chat file generated, but no comment entries were found for this VOD.")
                     else:
-                        st.error("Could not locate chat data for this link. Try uploading your chat log text file instead.")
+                        st.error("Could not fetch chat logs for this link. Make sure it's a valid public VOD URL.")
                 except Exception as e:
-                    st.error(f"Error downloading chat via link: {e}")
+                    st.error(f"Error fetching chat: {e}")
 
 else:
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
+# If user uploaded a file manually, process it for highlights
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
     valid_lines = 0
@@ -145,5 +161,3 @@ if content is not None and len(content) > 0:
             file_name="highlight_report.txt",
             mime="text/plain"
         )
-    else:
-        st.warning("Could not find valid timestamps from this source.")
