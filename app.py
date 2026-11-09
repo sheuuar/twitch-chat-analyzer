@@ -1,7 +1,9 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
-import requests
+import subprocess
+import json
+import os
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -24,42 +26,52 @@ if input_method == "Paste Twitch VOD Link":
     
     if vod_url:
         if st.button("🚀 Download & Analyze VOD Chat"):
-            try:
-                # Extract Video ID from standard Twitch URLs
-                clean_url = vod_url.split("?")[0]
-                video_id = clean_url.rstrip("/").split("/")[-1]
-                
-                if video_id.isdigit():
-                    with st.spinner(f"Fetching chat comments for VOD ID {video_id} from Twitch..."):
-                        # Public Twitch Helix/v5 comment endpoint
-                        api_url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
-                        headers = {"Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu"}
+            with st.spinner("Downloading chat log from VOD link... Please wait."):
+                try:
+                    # Use yt-dlp to write the chat json file locally
+                    output_template = "temp_chat"
+                    subprocess.run([
+                        "yt-dlp", 
+                        "--skip-download", 
+                        "--write-subs", 
+                        "--sub-format", "json", 
+                        "--output", output_template, 
+                        vod_url
+                    ], check=True, capture_output=True)
+                    
+                    # Look for the downloaded subtitle/chat json file
+                    json_filename = None
+                    for file in os.listdir("."):
+                        if file.startswith(output_template) and file.endswith(".json"):
+                            json_filename = file
+                            break
+                    
+                    if json_filename:
+                        with open(json_filename, "r", encoding="utf-8") as f:
+                            chat_data = json.load(f)
                         
-                        response = requests.get(api_url, headers=headers)
-                        
-                        if response.status_code == 200:
-                            data = response.json()
-                            comments = data.get("comments", [])
+                        extracted_lines = []
+                        comments = chat_data.get("comments", [])
+                        for comment in comments:
+                            offset = comment.get("content_offset_seconds", 0)
+                            hours = int(offset // 3600)
+                            minutes = int((offset % 3600) // 60)
+                            seconds = int(offset % 60)
+                            time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
                             
-                            extracted_lines = []
-                            for comment in comments:
-                                offset = comment.get("content_offset_seconds", 0)
-                                hours = int(offset // 3600)
-                                minutes = int((offset % 3600) // 60)
-                                seconds = int(offset % 60)
-                                time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
-                                
-                                message_body = comment.get("message", {}).get("body", "")
-                                extracted_lines.append(f"{time_str} {message_body}")
-                                
-                            content = extracted_lines
-                            st.success(f"Successfully downloaded and processed {len(content):,} messages from the VOD link!")
-                        else:
-                            st.error("Twitch restricted direct fetching for this video. Use the 'Upload Chat Log (.txt)' option instead!")
-                else:
-                    st.warning("Please enter a valid Twitch VOD URL ending in the video ID number.")
-            except Exception as e:
-                st.error(f"Error downloading chat: {e}")
+                            message_body = comment.get("message", {}).get("body", "")
+                            extracted_lines.append(f"{time_str} {message_body}")
+                        
+                        content = extracted_lines
+                        
+                        # Clean up the temporary file
+                        os.remove(json_filename)
+                        
+                        st.success(f"Successfully downloaded and processed {len(content):,} messages from the link!")
+                    else:
+                        st.error("Could not locate chat data for this link. Try uploading your chat log text file instead.")
+                except Exception as e:
+                    st.error(f"Error downloading chat via link: {e}")
 
 else:
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
