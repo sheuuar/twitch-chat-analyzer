@@ -83,4 +83,4 @@ if uploaded_file is not None:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps. Check your chat text file format.")our chat text file format.")
+        st.warning("Could not find valid timestamps. Check your chat text file format.")
