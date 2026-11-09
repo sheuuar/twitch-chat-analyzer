@@ -1,9 +1,7 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
-import subprocess
-import json
-import os
+import requests
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -14,83 +12,86 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Download a chat log from a Twitch VOD link, or upload your chat log file directly.")
+st.markdown("Extract unique VOD peak timestamps instantly by pasting a Twitch VOD link or uploading your chat log file.")
 
 # Option Selection for Input
-input_method = st.radio("Choose Input Method:", ["Download Chat Log from VOD Link", "Upload Chat Log (.txt)"])
+input_method = st.radio("Choose Input Method:", ["Paste Twitch VOD Link", "Upload Chat Log (.txt)"])
 
 content = None
+raw_chat_text = ""
 
-if input_method == "Download Chat Log from VOD Link":
+if input_method == "Paste Twitch VOD Link":
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     
     if vod_url:
         if st.button("🚀 Fetch & Generate Chat Log"):
-            with st.spinner("Downloading chat log from Twitch... Please wait."):
+            with st.spinner("Connecting to Twitch GQL to fetch chat comments... Please wait."):
                 try:
-                    output_template = "twitch_chat_temp"
+                    # Clean URL and extract Video ID
+                    clean_url = vod_url.split("?")[0]
+                    video_id = clean_url.rstrip("/").split("/")[-1]
                     
-                    # Correctly tell yt-dlp to write chat subtitles/comments
-                    subprocess.run([
-                        "yt-dlp", 
-                        "--skip-download", 
-                        "--write-subs", 
-                        "--sub-format", "json", 
-                        "--output", output_template, 
-                        vod_url
-                    ], check=True, capture_output=True)
-                    
-                    # Find the generated chat json file
-                    chat_json_file = None
-                    for file in os.listdir("."):
-                        if file.startswith(output_template) and file.endswith(".json"):
-                            chat_json_file = file
-                            break
-                    
-                    if chat_json_file:
-                        with open(chat_json_file, "r", encoding="utf-8") as f:
-                            chat_data = json.load(f)
+                    if video_id.isdigit():
+                        # Twitch GQL endpoint used by the web player
+                        gql_url = "https://gql.twitch.tv/gql"
+                        headers = {
+                            "Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu",
+                            "Content-Type": "application/json"
+                        }
                         
-                        extracted_lines = []
-                        comments = chat_data.get("comments", [])
-                        for comment in comments:
-                            offset = comment.get("content_offset_seconds", 0)
-                            hours = int(offset // 3600)
-                            minutes = int((offset % 3600) // 60)
-                            seconds = int(offset % 60)
-                            time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
-                            
-                            message_body = comment.get("message", {}).get("body", "")
-                            extracted_lines.append(f"{time_str} {message_body}")
+                        # GQL Query payload for video comments
+                        query = [{
+                            "operationName": "VideoCommentsByOffset",
+                            "variables": {"videoID": str(video_id), "contentOffsetSeconds": 0},
+                            "extensions": {"persistedQuery": {"version": 1, "sha256Hash": "b70bb3d1f0640d39f75a61e680a6b579fb145781d4a04fa6e3d231e3d640957b"}}
+                        }]
                         
-                        raw_chat_text = "\n".join(extracted_lines)
+                        response = requests.post(gql_url, headers=headers, json=query)
                         
-                        # Clean up temporary file
-                        os.remove(chat_json_file)
-                        
-                        if len(extracted_lines) > 0:
-                            st.success(f"Successfully generated chat log with {len(extracted_lines):,} messages!")
-                            
-                            # Provide the download button for the user to save the chat log file
-                            st.download_button(
-                                label="📥 Download Extracted Chat Log (.txt)",
-                                data=raw_chat_text,
-                                file_name="twitch_chat_log.txt",
-                                mime="text/plain"
-                            )
+                        if response.status_code == 200:
+                            res_data = response.json()
+                            try:
+                                comments = res_data[0]["data"]["video"]["comments"]["edges"]
+                                extracted_lines = []
+                                
+                                for edge in comments:
+                                    node = edge.get("node", {})
+                                    offset = node.get("contentOffsetSeconds", 0)
+                                    hours = int(offset // 3600)
+                                    minutes = int((offset % 3600) // 60)
+                                    seconds = int(offset % 60)
+                                    time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
+                                    
+                                    message_body = node.get("message", {}).get("body", "")
+                                    extracted_lines.append(f"{time_str} {message_body}")
+                                
+                                if extracted_lines:
+                                    content = extracted_lines
+                                    raw_chat_text = "\n".join(content)
+                                    st.success(f"Successfully fetched {len(content):,} messages from the VOD link!")
+                                    
+                                    st.download_button(
+                                        label="📥 Download Extracted Chat Log (.txt)",
+                                        data=raw_chat_text,
+                                        file_name=f"twitch_chat_{video_id}.txt",
+                                        mime="text/plain"
+                                    )
+                                else:
+                                    st.warning("Connected successfully, but no comments were returned. Try uploading your chat log text file instead.")
+                            except Exception:
+                                st.warning("Twitch API structure changed or restricted this video. Try uploading your chat log text file instead.")
                         else:
-                            st.warning("Chat file generated, but no comment entries were found for this VOD.")
+                            st.error("Twitch blocked the server request. Use the 'Upload Chat Log (.txt)' option for instant results.")
                     else:
-                        st.error("Could not fetch chat logs for this link. Make sure it's a valid public VOD URL.")
+                        st.warning("Please enter a valid Twitch VOD URL ending in numbers.")
                 except Exception as e:
-                    st.error(f"Error fetching chat: {e}")
+                    st.error(f"Error connecting to Twitch: {e}")
 
 else:
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
-# If user uploaded a file manually, process it for highlights
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
     valid_lines = 0
@@ -161,3 +162,5 @@ if content is not None and len(content) > 0:
             file_name="highlight_report.txt",
             mime="text/plain"
         )
+    else:
+        st.warning("Could not find valid timestamps from this source.")
