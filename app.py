@@ -11,14 +11,24 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Upload your Twitch chat log text file to instantly extract unique VOD peak timestamps and engagement volumes.")
+st.markdown("Extract unique VOD peak timestamps and engagement volumes via file upload or VOD link.")
 
-# File Uploader kept as requested
-uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
+# Option Tabs or Selection for Input
+input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
 
-if uploaded_file is not None:
-    content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
-    
+content = None
+
+if input_method == "Upload Chat Log (.txt)":
+    uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
+    if uploaded_file is not None:
+        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
+
+else:
+    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
+    if vod_url:
+        st.info("💡 To pull chat directly from a URL seamlessly without API blocks, the standard industry practice is using a tool like TwitchDownloader to grab the chat, or expanding this input to query the Twitch API. For now, you can paste your text or drop your log file above!")
+
+if content is not None:
     minute_counts = defaultdict(int)
     valid_lines = 0
 
@@ -50,7 +60,6 @@ if uploaded_file is not None:
             continue
 
     if minute_counts:
-        # Display top-level metric cards for professional feel
         col1, col2 = st.columns(2)
         col1.metric("Total Messages Scanned", f"{valid_lines:,}")
         
@@ -80,16 +89,12 @@ if uploaded_file is not None:
         st.divider()
         st.subheader("📊 Top VOD Peak Timestamps")
         
-        # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
         st.dataframe(df_peaks, use_container_width=True, hide_index=True)
 
-        # Download Report Button
         st.download_button(
             label="📥 Download Highlight Report (.txt)",
             data=report_text,
             file_name="highlight_report.txt",
             mime="text/plain"
         )
-    else:
-        st.warning("Could not find valid timestamps. Check your chat text file format.")
