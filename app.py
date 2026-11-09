@@ -1,6 +1,7 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
+import requests
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -22,12 +23,48 @@ if input_method == "Upload Chat Log (.txt)":
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
-else:
-    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
-    if vod_url:
-        st.info("💡 To pull chat directly from a URL seamlessly without API blocks, the standard industry practice is using a tool like TwitchDownloader to grab the chat, or expanding this input to query the Twitch API. For now, please use the file upload option!")
 
-if content is not None:
+else:
+    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/2915383492)")
+    if vod_url:
+        try:
+            # Extract Video ID from URL
+            clean_url = vod_url.split("?")[0]
+            video_id = clean_url.rstrip("/").split("/")[-1]
+            
+            if video_id.isdigit():
+                with st.spinner(f"Fetching chat comments for VOD ID {video_id} from Twitch..."):
+                    # Twitch public comments API endpoint for VODs
+                    url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
+                    # Note: Twitch v5 API requires a Client-ID. We use a public fallback client ID commonly used for web widgets.
+                    headers = {"Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu"}
+                    
+                    response = requests.get(url, headers=headers)
+                    if response.status_code == 200:
+                        data = response.json()
+                        comments = data.get("comments", [])
+                        
+                        extracted_lines = []
+                        for comment in comments:
+                            offset = comment.get("content_offset_seconds", 0)
+                            hours = int(offset // 3600)
+                            minutes = int((offset % 3600) // 60)
+                            seconds = int(offset % 60)
+                            time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
+                            
+                            message_body = comment.get("message", {}).get("body", "")
+                            extracted_lines.append(f"{time_str} {message_body}")
+                            
+                        content = extracted_lines
+                        st.success(f"Successfully fetched {len(content):,} comments from the VOD link!")
+                    else:
+                        st.error("Could not fetch chat automatically via this URL structure. Try using your chat text file upload instead!")
+            else:
+                st.warning("Please enter a valid Twitch VOD URL ending in the video number.")
+        except Exception as e:
+            st.error(f"Error parsing URL: {e}")
+
+if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
     valid_lines = 0
 
@@ -98,4 +135,4 @@ if content is not None:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps. Check your chat text file format.")
+        st.warning("Could not find valid timestamps from the source. Try a different VOD link or upload a chat log file.")
