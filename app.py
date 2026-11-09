@@ -1,7 +1,7 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
-import requests
+from chat_downloader import ChatDownloader
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -25,52 +25,28 @@ if input_method == "Upload Chat Log (.txt)":
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
 else:
-    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/2915383492)")
+    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     if vod_url:
         try:
-            clean_url = vod_url.split("?")[0]
-            video_id = clean_url.rstrip("/").split("/")[-1]
-            
-            if video_id.isdigit():
-                with st.spinner(f"Fetching chat directly for VOD ID {video_id}..."):
-                    # Utilizing Twitch's public GQL chat replay endpoint framework
-                    gql_url = "https://gql.twitch.tv/gql"
-                    headers = {"Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu"}
+            with st.spinner("Downloading chat log from VOD link... Please wait."):
+                chat = ChatDownloader().get_chat(vod_url)
+                extracted_lines = []
+                
+                for message in chat:
+                    # Extract timestamp and format it into [HH:MM:SS] structure
+                    hours = int(message.get('hours', 0))
+                    minutes = int(message.get('minutes', 0))
+                    seconds = int(message.get('seconds', 0))
                     
-                    # Query to fetch video comments chunks
-                    query = [{
-                        "operationName": "VideoCommentsByOffset",
-                        "variables": {"videoID": str(video_id), "contentOffsetSeconds": 0},
-                        "extensions": {"persistedQuery": {"version": 1, "sha256Hash": "b70bb3dnotarealhash"}}
-                    }]
+                    time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
+                    msg_text = message.get('message', '')
                     
-                    # Fallback robust endpoint approach via public chat API chunks
-                    fallback_url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
-                    response = requests.get(fallback_url, headers=headers)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        comments = data.get("comments", [])
-                        
-                        extracted_lines = []
-                        for comment in comments:
-                            offset = comment.get("content_offset_seconds", 0)
-                            hours = int(offset // 3600)
-                            minutes = int((offset % 3600) // 60)
-                            seconds = int(offset % 60)
-                            time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
-                            
-                            message_body = comment.get("message", {}).get("body", "")
-                            extracted_lines.append(f"{time_str} {message_body}")
-                            
-                        content = extracted_lines
-                        st.success(f"Successfully fetched {len(content):,} comments from the VOD link!")
-                    else:
-                        st.error("Twitch restricted direct fetching for this specific video. Try uploading the chat log text file instead for instant results.")
-            else:
-                st.warning("Please enter a valid Twitch VOD URL ending in the video number.")
+                    extracted_lines.append(f"{time_str} {msg_text}")
+                
+                content = extracted_lines
+                st.success(f"Successfully downloaded and processed {len(content):,} messages from the link!")
         except Exception as e:
-            st.error(f"Error processing URL: {e}")
+            st.error(f"Could not fetch chat from this URL. Make sure it's a public VOD link. (Error: {e})")
 
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
@@ -143,4 +119,4 @@ if content is not None and len(content) > 0:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps from the source. Try a different VOD link or upload a chat log file.")
+        st.warning("Could not find valid timestamps from this source. Try a different link.")
