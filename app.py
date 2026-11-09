@@ -12,7 +12,7 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Extract unique VOD peak timestamps instantly via file upload or by pasting a Twitch VOD link.")
+st.markdown("Extract unique VOD peak timestamps instantly by uploading a chat log or pasting a Twitch VOD URL.")
 
 # Option Selection for Input
 input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
@@ -28,12 +28,13 @@ else:
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     if vod_url:
         try:
-            with st.spinner("Downloading chat log from VOD link... Please wait."):
-                chat = ChatDownloader().get_chat(vod_url)
-                extracted_lines = []
+            with st.spinner("Downloading chat log from VOD URL... Please wait."):
+                # Disable progress bar and terminal features to prevent server ioctl errors
+                params = {'progress_bar': 'none', 'print_live': False}
+                chat = ChatDownloader().get_chat(vod_url, params=params)
                 
+                extracted_lines = []
                 for message in chat:
-                    # Extract timestamp and format it into [HH:MM:SS] structure
                     hours = int(message.get('hours', 0))
                     minutes = int(message.get('minutes', 0))
                     seconds = int(message.get('seconds', 0))
