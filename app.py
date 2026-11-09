@@ -18,20 +18,22 @@ st.markdown("Extract unique VOD peak timestamps instantly by uploading a chat lo
 input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
 
 content = None
+raw_chat_text = ""
 
 if input_method == "Upload Chat Log (.txt)":
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
-        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
+        raw_bytes = uploaded_file.getvalue()
+        raw_chat_text = raw_bytes.decode("utf-8", errors="ignore")
+        content = raw_chat_text.splitlines()
 
 else:
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     if vod_url:
         try:
-            with st.spinner("Downloading chat log from VOD URL... Please wait."):
-                # Disable progress bar and terminal features to prevent server ioctl errors
-                params = {'progress_bar': 'none', 'print_live': False}
-                chat = ChatDownloader().get_chat(vod_url, params=params)
+            with st.spinner("Fetching and downloading chat log from VOD URL... Please wait."):
+                # Correctly initialize chat downloader without invalid keyword arguments
+                chat = ChatDownloader().get_chat(vod_url)
                 
                 extracted_lines = []
                 for message in chat:
@@ -45,7 +47,16 @@ else:
                     extracted_lines.append(f"{time_str} {msg_text}")
                 
                 content = extracted_lines
-                st.success(f"Successfully downloaded and processed {len(content):,} messages from the link!")
+                raw_chat_text = "\n".join(content)
+                st.success(f"Successfully downloaded {len(content):,} messages from the link!")
+                
+                # Dedicated button to download the chatlog text file right from the link!
+                st.download_button(
+                    label="📥 Download Chat Log (.txt)",
+                    data=raw_chat_text,
+                    file_name="twitch_chat_log.txt",
+                    mime="text/plain"
+                )
         except Exception as e:
             st.error(f"Could not fetch chat from this URL. Make sure it's a public VOD link. (Error: {e})")
 
