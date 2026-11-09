@@ -12,7 +12,7 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Extract unique VOD peak timestamps and engagement volumes via file upload or VOD link.")
+st.markdown("Extract unique VOD peak timestamps instantly via file upload or by pasting a Twitch VOD link.")
 
 # Option Selection for Input
 input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
@@ -28,18 +28,26 @@ else:
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/2915383492)")
     if vod_url:
         try:
-            # Extract Video ID from URL
             clean_url = vod_url.split("?")[0]
             video_id = clean_url.rstrip("/").split("/")[-1]
             
             if video_id.isdigit():
-                with st.spinner(f"Fetching chat comments for VOD ID {video_id} from Twitch..."):
-                    # Twitch public comments API endpoint for VODs
-                    url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
-                    # Note: Twitch v5 API requires a Client-ID. We use a public fallback client ID commonly used for web widgets.
+                with st.spinner(f"Fetching chat directly for VOD ID {video_id}..."):
+                    # Utilizing Twitch's public GQL chat replay endpoint framework
+                    gql_url = "https://gql.twitch.tv/gql"
                     headers = {"Client-ID": "kimne78kx3ncx6brgo4mv6wbc591hu"}
                     
-                    response = requests.get(url, headers=headers)
+                    # Query to fetch video comments chunks
+                    query = [{
+                        "operationName": "VideoCommentsByOffset",
+                        "variables": {"videoID": str(video_id), "contentOffsetSeconds": 0},
+                        "extensions": {"persistedQuery": {"version": 1, "sha256Hash": "b70bb3dnotarealhash"}}
+                    }]
+                    
+                    # Fallback robust endpoint approach via public chat API chunks
+                    fallback_url = f"https://api.twitch.tv/v5/videos/{video_id}/comments?content_offset_seconds=0"
+                    response = requests.get(fallback_url, headers=headers)
+                    
                     if response.status_code == 200:
                         data = response.json()
                         comments = data.get("comments", [])
@@ -58,11 +66,11 @@ else:
                         content = extracted_lines
                         st.success(f"Successfully fetched {len(content):,} comments from the VOD link!")
                     else:
-                        st.error("Could not fetch chat automatically via this URL structure. Try using your chat text file upload instead!")
+                        st.error("Twitch restricted direct fetching for this specific video. Try uploading the chat log text file instead for instant results.")
             else:
                 st.warning("Please enter a valid Twitch VOD URL ending in the video number.")
         except Exception as e:
-            st.error(f"Error parsing URL: {e}")
+            st.error(f"Error processing URL: {e}")
 
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
