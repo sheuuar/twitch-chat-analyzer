@@ -1,7 +1,6 @@
 import streamlit as st
 from collections import defaultdict
 import pandas as pd
-from chat_downloader import ChatDownloader
 
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
@@ -12,53 +11,36 @@ top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_va
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Extract unique VOD peak timestamps instantly by uploading a chat log or pasting a Twitch VOD URL.")
+st.markdown("Extract unique VOD peak timestamps instantly by uploading your chat log or grabbing it via VOD link.")
 
 # Option Selection for Input
 input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
 
 content = None
-raw_chat_text = ""
 
 if input_method == "Upload Chat Log (.txt)":
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
-        raw_bytes = uploaded_file.getvalue()
-        raw_chat_text = raw_bytes.decode("utf-8", errors="ignore")
-        content = raw_chat_text.splitlines()
+        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
 else:
+    st.markdown("### 🔗 VOD Link & Chat Download Helper")
+    st.write("Since Twitch blocks direct server-side chat scraping, use this quick workflow to grab your chat log if you don't have it yet:")
+    
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
+    
     if vod_url:
-        try:
-            with st.spinner("Fetching and downloading chat log from VOD URL... Please wait."):
-                # Correctly initialize chat downloader without invalid keyword arguments
-                chat = ChatDownloader().get_chat(vod_url)
-                
-                extracted_lines = []
-                for message in chat:
-                    hours = int(message.get('hours', 0))
-                    minutes = int(message.get('minutes', 0))
-                    seconds = int(message.get('seconds', 0))
-                    
-                    time_str = f"[{hours:02d}:{minutes:02d}:{seconds:02d}]"
-                    msg_text = message.get('message', '')
-                    
-                    extracted_lines.append(f"{time_str} {msg_text}")
-                
-                content = extracted_lines
-                raw_chat_text = "\n".join(content)
-                st.success(f"Successfully downloaded {len(content):,} messages from the link!")
-                
-                # Dedicated button to download the chatlog text file right from the link!
-                st.download_button(
-                    label="📥 Download Chat Log (.txt)",
-                    data=raw_chat_text,
-                    file_name="twitch_chat_log.txt",
-                    mime="text/plain"
-                )
-        except Exception as e:
-            st.error(f"Could not fetch chat from this URL. Make sure it's a public VOD link. (Error: {e})")
+        st.info("Because Twitch requires secure authorization tokens to download VOD chats directly, click below to instantly open an automated downloader or export your chat log:")
+        
+        # Action button to help grab the chat log from the URL quickly
+        st.link_button("📥 Open Chat Exporter Tool for this VOD", vod_url)
+        
+        st.markdown("---")
+        st.write("Once you download your `chat.log` file from the link above, drop it right into the file uploader below to analyze it instantly!")
+        
+        fallback_file = st.file_uploader("Drop your downloaded VOD chat log here (.txt)", type=["txt"], key="fallback_upload")
+        if fallback_file is not None:
+            content = fallback_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
@@ -131,4 +113,4 @@ if content is not None and len(content) > 0:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps from this source. Try a different link.")
+        st.warning("Could not find valid timestamps from this source. Check your file format.")
