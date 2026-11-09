@@ -13,7 +13,7 @@ time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, m
 st.title("🔥 Stream Chat Highlight Analyzer")
 st.markdown("Extract unique VOD peak timestamps and engagement volumes via file upload or VOD link.")
 
-# Option Tabs or Selection for Input
+# Option Selection for Input
 input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link"])
 
 content = None
@@ -22,11 +22,10 @@ if input_method == "Upload Chat Log (.txt)":
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
-
 else:
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     if vod_url:
-        st.info("💡 To pull chat directly from a URL seamlessly without API blocks, the standard industry practice is using a tool like TwitchDownloader to grab the chat, or expanding this input to query the Twitch API. For now, you can paste your text or drop your log file above!")
+        st.info("💡 To pull chat directly from a URL seamlessly without API blocks, the standard industry practice is using a tool like TwitchDownloader to grab the chat, or expanding this input to query the Twitch API. For now, please use the file upload option!")
 
 if content is not None:
     minute_counts = defaultdict(int)
@@ -98,3 +97,5 @@ if content is not None:
             file_name="highlight_report.txt",
             mime="text/plain"
         )
+    else:
+        st.warning("Could not find valid timestamps. Check your chat text file format.")
