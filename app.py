@@ -13,6 +13,7 @@ time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, m
 st.title("🔥 Stream Chat Highlight Analyzer")
 st.markdown("Upload your Twitch chat log text file to instantly extract unique VOD peak timestamps and engagement volumes.")
 
+# File Uploader kept as requested
 uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
 
 if uploaded_file is not None:
