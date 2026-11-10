@@ -60,10 +60,10 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
-# --- MAIN HERO BANNER IMAGE INTEGRATION (Full-width fix) ---
-st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
+# --- SWAPPED: Secondary Picture Now at the Top ---
+st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
 st.divider()
-# -----------------------------------------------------------
+# ------------------------------------------------
 
 # Hero Section Header
 st.markdown('<p class="hero-title">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
@@ -95,8 +95,8 @@ with col_f3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SECONDARY IMAGE DISPLAY ---
-st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
+# --- SWAPPED: Main Picture Now Displayed Below ---
+st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Requirements & Workflow Instructions Box
