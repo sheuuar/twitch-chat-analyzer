@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS injection for modern SaaS landing-page styling & full-width image styling
+# Custom CSS injection for modern SaaS landing-page styling & crisp image rendering
 st.markdown("""
     <style>
         .hero-title {
@@ -44,9 +44,16 @@ st.markdown("""
             color: #a1a1aa;
             font-size: 0.9rem;
         }
-        /* Make sure images scale smoothly across the entire width */
+        /* Make sure hero banner scales smoothly */
         img {
             border-radius: 12px;
+        }
+        /* Crisp image rendering class for secondary pictures */
+        .crisp-img {
+            image-rendering: -webkit-optimize-contrast;
+            border-radius: 12px;
+            max-width: 100%;
+            height: auto;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -60,10 +67,9 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
-# --- SWAPPED: Secondary Picture Now at the Top ---
+# --- TOP BANNER IMAGE ---
 st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
 st.divider()
-# ------------------------------------------------
 
 # Hero Section Header
 st.markdown('<p class="hero-title">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
@@ -95,7 +101,7 @@ with col_f3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SWAPPED: Main Picture Now Displayed Below ---
+# --- SECONDARY IMAGE DISPLAY (Crisp rendering fix) ---
 st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
