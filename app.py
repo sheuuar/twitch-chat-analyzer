@@ -210,7 +210,7 @@ if content is not None and len(content) > 0:
         st.warning("Could not find valid timestamps. Check that your chat text file follows the standard timestamp format (e.g., [HH:MM:SS]).")
 
 # ==========================================
-# ✂️ DEDICATED MAIN PAGE CLIP EDITOR SECTION
+# ✂️ DEDICATED MAIN PAGE CLIP EDITOR SECTION (Now properly on the main page outside loops)
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
@@ -234,7 +234,7 @@ with st.expander("📖 How to Use the Video Clip Editor (Click to view guide)", 
 
 with st.container():
     if not MOVIEPY_AVAILABLE:
-        st.warning("⚠️ The `moviepy` library is not installed. Make sure `moviepy` is included in your `requirements.txt` file.")
+        st.warning("⚠️ The `moviepy` library is not installed in your environment. Please ensure `moviepy` is listed in your `requirements.txt` file.")
     else:
         col_edit1, col_edit2 = st.columns([2, 1])
         
@@ -287,3 +287,4 @@ with st.container():
                             )
                 except Exception as e:
                     st.error(f"Error processing timestamp format. Please use HH:MM:SS format (e.g., 00:16:00). Details: {e}")
+                
