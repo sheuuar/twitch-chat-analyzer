@@ -3,11 +3,13 @@ from collections import defaultdict
 import pandas as pd
 import os
 
-# Safe import for moviepy with fallback state
+# Force moviepy to use imageio-ffmpeg built-in binaries for cloud compatibility
 try:
+    import imageio_ffmpeg
+    os.environ["IMAGEIO_FFMPEG_EXE"] = imageio_ffmpeg.get_ffmpeg_exe()
     from moviepy.editor import VideoFileClip
     MOVIEPY_AVAILABLE = True
-except Exception:
+except Exception as e:
     MOVIEPY_AVAILABLE = False
 
 # Page Configuration
@@ -259,7 +261,7 @@ with st.container():
         
         if generate_btn:
             if not MOVIEPY_AVAILABLE:
-                st.error("⚠️ Video processing libraries are currently initializing or unavailable in this cloud container environment. For heavy video editing, we recommend running this Streamlit app locally on your machine where local FFmpeg binaries are accessible.")
+                st.error("⚠️ Video processing packages are not initialized. Please ensure `imageio-ffmpeg` and `moviepy` are in your requirements.txt.")
             else:
                 try:
                     h, m, s = map(int, clip_time_input.split(":"))
