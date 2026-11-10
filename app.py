@@ -3,65 +3,67 @@ from collections import defaultdict
 import pandas as pd
 
 # Page Configuration
-st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
+st.set_page_config(
+    page_title="Stream Chat Highlight Analyzer", 
+    page_icon="🔥", 
+    layout="wide"
+)
 
 # Custom CSS injection for modern dark-mode card styling & visual polish
 st.markdown("""
     <style>
         .main-header {
-            font-size: 2.5rem;
-            font-weight: 800;
+            font-size: 2.8rem;
+            font-weight: 900;
             color: #ff4b4b;
             margin-bottom: 0px;
+            letter-spacing: -0.5px;
         }
         .sub-header {
-            color: #a3a3a3;
-            font-size: 1.1rem;
+            color: #9ca3af;
+            font-size: 1.15rem;
             margin-bottom: 2rem;
         }
-        .metric-card {
-            background-color: #1e1e24;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #333;
-            text-align: center;
+        .card-container {
+            background-color: #18181b;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #27272a;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .stButton button {
+            width: 100%;
+            border-radius: 8px;
+            font-weight: 600;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # Sidebar settings for user control
-st.sidebar.header("⚙️ Analyzer Settings")
+st.sidebar.header("⚙️ Analyzer Parameters")
 top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_value=50, value=25)
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
-st.markdown('<p class="main-header">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Extract unique VOD peak timestamps and engagement volumes instantly.</p>', unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📌 Quick Guide")
+st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file.\n3. Instantly review peak engagement timestamps.")
 
-# Option Selection for Input
-input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link Helper"], horizontal=True)
+# App Header Section (Visual Banner Integration)
+st.image("https://static-cdn.jtvnw.net/cf_vods/d2nvs31859zcd8/75d9e5dbd7c541315bfa_kaicenat_41776994983_1729388485//thumb/thumb0-640x360.jpg", use_column_width=True)
+st.divider()
+
+st.markdown('<p class="main-header">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Automated volume-spike detection for finding elite VOD timestamps and chat peaks instantly.</p>', unsafe_allow_html=True)
+
+# Input Section inside a clean container
+st.markdown("### 📂 Load Chat Log Data")
+st.info("💡 **Editor Workflow:** To analyze a Twitch VOD, use [TwitchDownloader](https://github.com/Lay295/TwitchDownloader) to export the chat log into a `.txt` file, then drop it right below.")
+
+uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
 
 content = None
-
-if input_method == "Upload Chat Log (.txt)":
-    st.info("💡 **Tip:** To get your chat log from a Twitch VOD, download and use **TwitchDownloader** to export the chat into a `.txt` file, then upload it below.")
-    
-    uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
-    if uploaded_file is not None:
-        content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
-
-else:
-    st.markdown("### 🔗 VOD Link & Chat Download Helper")
-    st.write("Since Twitch blocks cloud servers from downloading chats automatically, use this quick workflow to grab your chat log file:")
-    
-    vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
-    
-    if vod_url:
-        st.info("Because Twitch requires local browser authorization to download chat logs directly, use **TwitchDownloader** to save your `.txt` chat log, then drop it right below!")
-        
-        st.markdown("---")
-        fallback_file = st.file_uploader("Drop your downloaded VOD chat log here (.txt)", type=["txt"], key="link_fallback")
-        if fallback_file is not None:
-            content = fallback_file.getvalue().decode("utf-8", errors="ignore").splitlines()
+if uploaded_file is not None:
+    content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
 
 if content is not None and len(content) > 0:
     minute_counts = defaultdict(int)
@@ -131,7 +133,7 @@ if content is not None and len(content) > 0:
         
         # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
-        st.dataframe(df_peaks, use_container_width=True, hide_index=True)
+        st.dataframe(df_peaks, use_column_width=True, hide_index=True)
 
         # Success celebration effect
         st.balloons()
@@ -144,4 +146,4 @@ if content is not None and len(content) > 0:
             mime="text/plain"
         )
     else:
-        st.warning("Could not find valid timestamps. Check your chat text file format.")
+        st.warning("Could not find valid timestamps. Check that your chat text file follows the standard timestamp format (e.g., [HH:MM:SS]).")
