@@ -217,7 +217,7 @@ st.markdown("---")
 
 st.markdown("""
     <div style="text-align: center; margin-bottom: 1.5rem;">
-        <h2 style="color: #ffffff;">✂️ Klipa-Style Video Clip Editor</h2>
+        <h2 style="color: #ffffff;">✂️ Video Clip Editor</h2>
         <p style="color: #9ca3af;">Transform your raw VOD files into crisp vertical clips or highlights instantly.</p>
     </div>
 """, unsafe_allow_html=True)
