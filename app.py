@@ -59,19 +59,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar settings for user control & Clip Editor Mode
+# Sidebar settings for user control (Clean & Minimal)
 st.sidebar.header("⚙️ Analyzer Parameters")
 top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_value=50, value=25)
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
 st.sidebar.markdown("---")
-st.sidebar.header("🎬 Clip Editor Mode")
-enable_editor = st.sidebar.checkbox("Enable Video Trimming Tool", value=False)
-clip_duration = st.sidebar.slider("Clip Duration (seconds)", min_value=10, max_value=60, value=30)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 Quick Guide")
-st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
+st.sidebar.markdown("### 📌 Quick Guides")
+st.sidebar.markdown("1. **Chat Analyzer:** Export chat via [TwitchDownloader](https://github.com/Lay295/TwitchDownloader) and upload log above.\n2. **Video Cutter:** Paste peak timestamps into the editor below to slice clips.")
 
 # --- PRIMARY BANNER IMAGE AT THE TOP ---
 st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
@@ -111,7 +106,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.image("https://i.imgur.com/QdxrWML.png", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Requirements & Workflow Instructions Box
+# Requirements & Workflow Instructions Box (Chat Log)
 with st.expander("📖 How to Get Your Twitch Chat Log (Click to view guide)", expanded=True):
     st.markdown("""
     ### Requirements & Workflow:
@@ -211,58 +206,84 @@ if content is not None and len(content) > 0:
             file_name="highlight_report.txt",
             mime="text/plain"
         )
-
-        # --- OPTIONAL VIDEO CLIP EDITOR WORKFLOW ---
-        if enable_editor:
-            st.markdown("---")
-            st.markdown("### ✂️ VOD Video Clip Trimmer")
-            
-            if not MOVIEPY_AVAILABLE:
-                st.warning("⚠️ The `moviepy` library is not currently installed in your environment. Add `moviepy` to your `requirements.txt` file to enable automated video cutting.")
-            else:
-                uploaded_video = st.file_uploader("Upload raw VOD video file (.mp4)", type=["mp4", "mov"])
-                
-                if uploaded_video is not None:
-                    # Save temp video file locally
-                    video_filename = "temp_vod.mp4"
-                    with open(video_filename, "wb") as f:
-                        f.write(uploaded_video.getbuffer())
-                    
-                    st.success("✅ VOD video loaded successfully!")
-                    
-                    # Manual timestamp selector for clipping
-                    selected_timestamp = st.selectbox(
-                        "Select a peak timestamp to clip",
-                        options=[row["VOD Timestamp"] for row in table_data]
-                    )
-                    
-                    if st.button("🎬 Generate MP4 Clip"):
-                        # Convert timestamp string (HH:MM:SS) to total seconds
-                        h, m, s = map(int, selected_timestamp.split(":"))
-                        target_sec = h * 3600 + m * 60 + s
-                        
-                        start_time = max(0, target_sec - 5) # 5 seconds buffer before spike
-                        end_time = target_sec + clip_duration
-                        
-                        output_clip_name = f"highlight_{selected_timestamp.replace(':', '_')}.mp4"
-                        
-                        with st.spinner("Processing clip... Please wait."):
-                            try:
-                                with VideoFileClip(video_filename) as video:
-                                    clipped = video.subclip(start_time, min(end_time, video.duration))
-                                    clipped.write_videofile(output_clip_name, codec="libx264", audio_codec="aac", logger=None)
-                                
-                                st.success("🎉 Clip generated successfully!")
-                                st.video(output_clip_name)
-                                
-                                with open(output_clip_name, "rb") as file_to_download:
-                                    st.download_button(
-                                        label="📥 Download Trimmed MP4",
-                                        data=file_to_download,
-                                        file_name=output_clip_name,
-                                        mime="video/mp4"
-                                    )
-                            except Exception as e:
-                                st.error(f"Error generating clip: {e}")
     else:
-                        st.warning("Could not find valid timestamps. Check that your chat text file follows the standard timestamp format (e.g., [HH:MM:SS]).")
+        st.warning("Could not find valid timestamps. Check that your chat text file follows the standard timestamp format (e.g., [HH:MM:SS]).")
+
+# ==========================================
+# ✂️ DEDICATED MAIN PAGE CLIP EDITOR SECTION
+# ==========================================
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
+
+st.markdown("""
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+        <h2 style="color: #ffffff;">✂️ Klipa-Style Video Clip Editor</h2>
+        <p style="color: #9ca3af;">Transform your raw VOD files into crisp vertical clips or highlights instantly.</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# Video Editor Workflow Guide Box (Matching Chat Log Style)
+with st.expander("📖 How to Use the Video Clip Editor (Click to view guide)", expanded=True):
+    st.markdown("""
+    ### Requirements & Workflow:
+    Turn your detected chat peaks into ready-to-publish short-form videos in seconds:
+    1. **Upload Raw VOD:** Drop your downloaded full-stream `.mp4` or `.mov` file into the video uploader.
+    2. **Set Duration & Timestamp:** Adjust your preferred clip length slider, then copy a peak timestamp from your chat analysis above (format: `HH:MM:SS`).
+    3. **Cut & Export:** Click **Cut & Export MP4 Clip** to automatically slice out the exact highlight, preview it live, and download your clean MP4 file.
+    """)
+
+with st.container():
+    if not MOVIEPY_AVAILABLE:
+        st.warning("⚠️ The `moviepy` library is not installed. Make sure `moviepy` is included in your `requirements.txt` file.")
+    else:
+        col_edit1, col_edit2 = st.columns([2, 1])
+        
+        with col_edit1:
+            uploaded_video = st.file_uploader("Upload raw VOD video file (.mp4)", type=["mp4", "mov"], key="editor_video_upload")
+            
+        with col_edit2:
+            clip_duration = st.slider("Clip Duration (seconds)", min_value=10, max_value=60, value=30, key="editor_duration_slider")
+
+        if uploaded_video is not None:
+            video_filename = "temp_vod.mp4"
+            with open(video_filename, "wb") as f:
+                f.write(uploaded_video.getbuffer())
+            
+            st.success("✅ VOD loaded and ready for editing!")
+            
+            # Timestamp input for cutting
+            col_t1, col_t2 = st.columns(2)
+            with col_t1:
+                clip_time_input = st.text_input("Enter Timestamp to Clip (Format: HH:MM:SS)", value="00:00:00")
+            
+            with col_t2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                generate_btn = st.button("🎬 Cut & Export MP4 Clip", use_container_width=True)
+            
+            if generate_btn:
+                try:
+                    h, m, s = map(int, clip_time_input.split(":"))
+                    target_sec = h * 3600 + m * 60 + s
+                    
+                    start_time = max(0, target_sec - 5) # 5 seconds buffer before spike
+                    end_time = target_sec + clip_duration
+                    
+                    output_clip_name = f"highlight_{clip_time_input.replace(':', '_')}.mp4"
+                    
+                    with st.spinner("Processing your clip... Please wait."):
+                        with VideoFileClip(video_filename) as video:
+                            clipped = video.subclip(start_time, min(end_time, video.duration))
+                            clipped.write_videofile(output_clip_name, codec="libx264", audio_codec="aac", logger=None)
+                        
+                        st.success("🎉 Clip generated successfully!")
+                        st.video(output_clip_name)
+                        
+                        with open(output_clip_name, "rb") as file_to_download:
+                            st.download_button(
+                                label="📥 Download Trimmed MP4 File",
+                                data=file_to_download,
+                                file_name=output_clip_name,
+                                mime="video/mp4"
+                            )
+                except Exception as e:
+                    st.error(f"Error processing timestamp format. Please use HH:MM:SS format (e.g., 00:16:00). Details: {e}")
