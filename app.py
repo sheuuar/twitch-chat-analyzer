@@ -65,7 +65,7 @@ st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
 # --- MAIN HERO BANNER IMAGE INTEGRATION ---
-st.image("https://i.imgur.com/TPP6K2c.png", use_column_width=True)
+st.image("https://i.imgur.com/1VsqUNx.jpeg", use_column_width=True)
 st.divider()
 # ----------------------------------------
 
@@ -187,7 +187,7 @@ if content is not None and len(content) > 0:
         
         # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
-        st.dataframe(df_peaks, use_column_width=True, hide_index=True)
+        st.dataframe(df_peaks, use_container_width=True, hide_index=True)
 
         # Success celebration effect
         st.balloons()
