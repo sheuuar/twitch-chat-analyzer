@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS injection for modern SaaS landing-page styling (Klipa style)
+# Custom CSS injection for modern SaaS landing-page styling & full-width image styling
 st.markdown("""
     <style>
         .hero-title {
@@ -44,13 +44,9 @@ st.markdown("""
             color: #a1a1aa;
             font-size: 0.9rem;
         }
-        .upload-section {
-            background-color: #121214;
-            padding: 30px;
-            border-radius: 16px;
-            border: 1px dashed #3f3f46;
-            text-align: center;
-            margin-bottom: 2rem;
+        /* Make sure images scale smoothly across the entire width */
+        img {
+            border-radius: 12px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -64,16 +60,16 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
-# --- MAIN HERO BANNER IMAGE INTEGRATION ---
-st.image("https://i.imgur.com/1VsqUNx.jpeg", use_column_width=True)
+# --- MAIN HERO BANNER IMAGE INTEGRATION (Full-width fix) ---
+st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
 st.divider()
-# ----------------------------------------
+# -----------------------------------------------------------
 
 # Hero Section Header
 st.markdown('<p class="hero-title">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
 st.markdown('<p class="hero-subtitle">Automated volume-spike detection to find elite VOD timestamps and chat peaks instantly — free, no signup required.</p>', unsafe_allow_html=True)
 
-# Feature Grid (Inspired by Klipa AI's layout cards)
+# Feature Grid
 col_f1, col_f2, col_f3 = st.columns(3)
 with col_f1:
     st.markdown("""
@@ -97,6 +93,10 @@ with col_f3:
         </div>
     """, unsafe_allow_html=True)
 
+st.markdown("<br>", unsafe_allow_html=True)
+
+# --- SECONDARY IMAGE DISPLAY ---
+st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Requirements & Workflow Instructions Box
