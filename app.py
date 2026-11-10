@@ -9,32 +9,48 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS injection for modern dark-mode card styling & visual polish
+# Custom CSS injection for modern SaaS landing-page styling (Klipa style)
 st.markdown("""
     <style>
-        .main-header {
-            font-size: 2.8rem;
+        .hero-title {
+            font-size: 3.2rem;
             font-weight: 900;
-            color: #ff4b4b;
-            margin-bottom: 0px;
-            letter-spacing: -0.5px;
+            color: #ffffff;
+            letter-spacing: -1px;
+            text-align: center;
+            margin-bottom: 0.5rem;
         }
-        .sub-header {
+        .hero-subtitle {
             color: #9ca3af;
-            font-size: 1.15rem;
-            margin-bottom: 2rem;
+            font-size: 1.25rem;
+            text-align: center;
+            margin-bottom: 2.5rem;
         }
-        .card-container {
+        .feature-card {
             background-color: #18181b;
             padding: 24px;
             border-radius: 12px;
             border: 1px solid #27272a;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            height: 100%;
         }
-        .stButton button {
-            width: 100%;
-            border-radius: 8px;
-            font-weight: 600;
+        .feature-title {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .feature-desc {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+        }
+        .upload-section {
+            background-color: #121214;
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px dashed #3f3f46;
+            text-align: center;
+            margin-bottom: 2rem;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -46,20 +62,53 @@ time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, m
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
-st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file.\n3. Instantly review peak engagement timestamps.")
+st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
-# App Header Section (Visual Banner Integration)
-st.image("https://static-cdn.jtvnw.net/cf_vods/d2nvs31859zcd8/75d9e5dbd7c541315bfa_kaicenat_41776994983_1729388485//thumb/thumb0-640x360.jpg", use_column_width=True)
-st.divider()
+# Hero Section Header
+st.markdown('<p class="hero-title">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
+st.markdown('<p class="hero-subtitle">Automated volume-spike detection to find elite VOD timestamps and chat peaks instantly — free, no signup required.</p>', unsafe_allow_html=True)
 
-st.markdown('<p class="main-header">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Automated volume-spike detection for finding elite VOD timestamps and chat peaks instantly.</p>', unsafe_allow_html=True)
+# Feature Grid (Inspired by Klipa AI's layout cards)
+col_f1, col_f2, col_f3 = st.columns(3)
+with col_f1:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="feature-title">⚡ Instant Spike Detection</div>
+            <div class="feature-desc">Scans tens of thousands of chat messages in milliseconds to map exact engagement spikes.</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col_f2:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="feature-title">🎯 Smart Deduplication</div>
+            <div class="feature-desc">Groups close timestamps together so you get clean, distinct highlights for your timeline.</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col_f3:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="feature-title">📥 Ready-to-Use Reports</div>
+            <div class="feature-desc">Export structured highlight summaries instantly as clean `.txt` files for your editing team.</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-# Input Section inside a clean container
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Requirements & Workflow Instructions Box
+with st.expander("📖 How to Get Your Twitch Chat Log (Click to view guide)", expanded=True):
+    st.markdown("""
+    ### Requirements & Workflow:
+    Because Twitch blocks cloud servers from downloading live VOD chat logs automatically, follow these quick steps:
+    1. **Download the tool:** Get the free, open-source desktop app [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).
+    2. **Export Chat:** Paste your Twitch VOD URL into TwitchDownloader and export the chat log as a standard `.txt` file.
+    3. **Upload & Analyze:** Drop your exported `.txt` chat log file into the uploader below to instantly extract top timestamps.
+    """)
+
+st.markdown("---")
+
+# Main File Upload Section
 st.markdown("### 📂 Load Chat Log Data")
-st.info("💡 **Editor Workflow:** To analyze a Twitch VOD, use [TwitchDownloader](https://github.com/Lay295/TwitchDownloader) to export the chat log into a `.txt` file, then drop it right below.")
-
-uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
+uploaded_file = st.file_uploader("Upload your Twitch chat log (.txt)", type=["txt"])
 
 content = None
 if uploaded_file is not None:
