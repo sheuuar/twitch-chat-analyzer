@@ -19,6 +19,9 @@ input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Past
 content = None
 
 if input_method == "Upload Chat Log (.txt)":
+    # Clear instructions for the user when they click upload
+    st.info("💡 **Tip:** To get your chat log from a Twitch VOD, download and use **TwitchDownloader** to export the chat into a `.txt` file, then upload it below.")
+    
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
     if uploaded_file is not None:
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore").splitlines()
@@ -30,7 +33,7 @@ else:
     vod_url = st.text_input("Paste Twitch VOD URL (e.g., https://www.twitch.tv/videos/...)")
     
     if vod_url:
-        st.info("Because Twitch requires local browser authorization to download chat logs directly, you can use a tool like TwitchDownloader to save your `.txt` chat log, then drop it right below!")
+        st.info("Because Twitch requires local browser authorization to download chat logs directly, use **TwitchDownloader** to save your `.txt` chat log, then drop it right below!")
         
         st.markdown("---")
         fallback_file = st.file_uploader("Drop your downloaded VOD chat log here (.txt)", type=["txt"], key="link_fallback")
