@@ -3,11 +3,11 @@ from collections import defaultdict
 import pandas as pd
 import os
 
-# Try importing moviepy for video editing capabilities
+# Safe import for moviepy with fallback state
 try:
     from moviepy.editor import VideoFileClip
     MOVIEPY_AVAILABLE = True
-except ImportError:
+except Exception:
     MOVIEPY_AVAILABLE = False
 
 # Page Configuration
@@ -210,7 +210,7 @@ if content is not None and len(content) > 0:
         st.warning("Could not find valid timestamps. Check that your chat text file follows the standard timestamp format (e.g., [HH:MM:SS]).")
 
 # ==========================================
-# ✂️ DEDICATED MAIN PAGE CLIP EDITOR SECTION (Now properly on the main page outside loops)
+# ✂️ DEDICATED MAIN PAGE CLIP EDITOR SECTION
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
@@ -222,7 +222,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Video Editor Workflow Guide Box (Matching Chat Log Style)
+# Video Editor Workflow Guide Box
 with st.expander("📖 How to Use the Video Clip Editor (Click to view guide)", expanded=True):
     st.markdown("""
     ### Requirements & Workflow:
@@ -233,34 +233,34 @@ with st.expander("📖 How to Use the Video Clip Editor (Click to view guide)", 
     """)
 
 with st.container():
-    if not MOVIEPY_AVAILABLE:
-        st.warning("⚠️ The `moviepy` library is not installed in your environment. Please ensure `moviepy` is listed in your `requirements.txt` file.")
-    else:
-        col_edit1, col_edit2 = st.columns([2, 1])
+    col_edit1, col_edit2 = st.columns([2, 1])
+    
+    with col_edit1:
+        uploaded_video = st.file_uploader("Upload raw VOD video file (.mp4)", type=["mp4", "mov"], key="editor_video_upload")
         
-        with col_edit1:
-            uploaded_video = st.file_uploader("Upload raw VOD video file (.mp4)", type=["mp4", "mov"], key="editor_video_upload")
-            
-        with col_edit2:
-            clip_duration = st.slider("Clip Duration (seconds)", min_value=10, max_value=60, value=30, key="editor_duration_slider")
+    with col_edit2:
+        clip_duration = st.slider("Clip Duration (seconds)", min_value=10, max_value=60, value=30, key="editor_duration_slider")
 
-        if uploaded_video is not None:
-            video_filename = "temp_vod.mp4"
-            with open(video_filename, "wb") as f:
-                f.write(uploaded_video.getbuffer())
-            
-            st.success("✅ VOD loaded and ready for editing!")
-            
-            # Timestamp input for cutting
-            col_t1, col_t2 = st.columns(2)
-            with col_t1:
-                clip_time_input = st.text_input("Enter Timestamp to Clip (Format: HH:MM:SS)", value="00:00:00")
-            
-            with col_t2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                generate_btn = st.button("🎬 Cut & Export MP4 Clip", use_container_width=True)
-            
-            if generate_btn:
+    if uploaded_video is not None:
+        video_filename = "temp_vod.mp4"
+        with open(video_filename, "wb") as f:
+            f.write(uploaded_video.getbuffer())
+        
+        st.success("✅ VOD loaded and ready for editing!")
+        
+        # Timestamp input for cutting
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            clip_time_input = st.text_input("Enter Timestamp to Clip (Format: HH:MM:SS)", value="00:00:00")
+        
+        with col_t2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            generate_btn = st.button("🎬 Cut & Export MP4 Clip", use_container_width=True)
+        
+        if generate_btn:
+            if not MOVIEPY_AVAILABLE:
+                st.error("⚠️ Video processing libraries are currently initializing or unavailable in this cloud container environment. For heavy video editing, we recommend running this Streamlit app locally on your machine where local FFmpeg binaries are accessible.")
+            else:
                 try:
                     h, m, s = map(int, clip_time_input.split(":"))
                     target_sec = h * 3600 + m * 60 + s
@@ -286,4 +286,4 @@ with st.container():
                                 mime="video/mp4"
                             )
                 except Exception as e:
-                    st.error(f"Error processing timestamp format. Please use HH:MM:SS format (e.g., 00:16:00). Details: {e}")
+                    st.error(f"Error processing video file or timestamp format. Details: {e}")
