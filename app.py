@@ -61,8 +61,8 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
-# --- UNIQUE MAIN HERO BANNER AT THE TOP ---
-st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
+# --- PRIMARY BANNER IMAGE AT THE TOP ---
+st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
 st.divider()
 
 # Hero Section Header
@@ -95,7 +95,7 @@ with col_f3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- DIFFERENT SECONDARY IMAGE DISPLAY ---
+# --- SECONDARY IMAGE DISPLAY ---
 st.image("https://i.imgur.com/QdxrWML.png", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
