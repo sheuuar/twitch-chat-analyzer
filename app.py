@@ -287,4 +287,3 @@ with st.container():
                             )
                 except Exception as e:
                     st.error(f"Error processing timestamp format. Please use HH:MM:SS format (e.g., 00:16:00). Details: {e}")
-                
