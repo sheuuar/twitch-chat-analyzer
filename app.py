@@ -5,21 +5,44 @@ import pandas as pd
 # Page Configuration
 st.set_page_config(page_title="Stream Chat Highlight Analyzer", page_icon="🔥", layout="wide")
 
+# Custom CSS injection for modern dark-mode card styling & visual polish
+st.markdown("""
+    <style>
+        .main-header {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #ff4b4b;
+            margin-bottom: 0px;
+        }
+        .sub-header {
+            color: #a3a3a3;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background-color: #1e1e24;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Sidebar settings for user control
 st.sidebar.header("⚙️ Analyzer Settings")
 top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_value=50, value=25)
 time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, max_value=5, value=2)
 
-st.title("🔥 Stream Chat Highlight Analyzer")
-st.markdown("Upload your Twitch chat log text file to instantly extract unique VOD peak timestamps and engagement volumes.")
+st.markdown('<p class="main-header">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Extract unique VOD peak timestamps and engagement volumes instantly.</p>', unsafe_allow_html=True)
 
 # Option Selection for Input
-input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link Helper"])
+input_method = st.radio("Choose Input Method:", ["Upload Chat Log (.txt)", "Paste Twitch VOD Link Helper"], horizontal=True)
 
 content = None
 
 if input_method == "Upload Chat Log (.txt)":
-    # Clear instructions for the user when they click upload
     st.info("💡 **Tip:** To get your chat log from a Twitch VOD, download and use **TwitchDownloader** to export the chat into a `.txt` file, then upload it below.")
     
     uploaded_file = st.file_uploader("Upload chat log (.txt)", type=["txt"])
@@ -72,8 +95,13 @@ if content is not None and len(content) > 0:
             continue
 
     if minute_counts:
+        st.divider()
+        
+        # Professional Metric Display Columns
         col1, col2 = st.columns(2)
-        col1.metric("Total Messages Scanned", f"{valid_lines:,}")
+        
+        with col1:
+            st.metric(label="💬 Total Messages Scanned", value=f"{valid_lines:,}")
         
         sorted_peaks = sorted(minute_counts.items(), key=lambda x: x[1], reverse=True)
         
@@ -96,14 +124,19 @@ if content is not None and len(content) > 0:
             if len(table_data) >= top_n:
                 break
 
-        col2.metric("Highlights Extracted", f"{len(table_data)}")
+        with col2:
+            st.metric(label="⚡ Highlights Extracted", value=f"{len(table_data)}")
         
-        st.divider()
-        st.subheader("📊 Top VOD Peak Timestamps")
+        st.markdown("### 📊 Top VOD Peak Timestamps")
         
+        # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
         st.dataframe(df_peaks, use_container_width=True, hide_index=True)
 
+        # Success celebration effect
+        st.balloons()
+
+        # Download Report Button
         st.download_button(
             label="📥 Download Highlight Report (.txt)",
             data=report_text,
