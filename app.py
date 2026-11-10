@@ -44,16 +44,10 @@ st.markdown("""
             color: #a1a1aa;
             font-size: 0.9rem;
         }
-        /* Make sure hero banner scales smoothly */
+        /* Make sure images scale smoothly with high contrast optimization */
         img {
             border-radius: 12px;
-        }
-        /* Crisp image rendering class for secondary pictures */
-        .crisp-img {
             image-rendering: -webkit-optimize-contrast;
-            border-radius: 12px;
-            max-width: 100%;
-            height: auto;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -101,7 +95,7 @@ with col_f3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SECONDARY IMAGE DISPLAY (Crisp rendering fix) ---
+# --- SECONDARY IMAGE DISPLAY ---
 st.image("https://i.imgur.com/1VsqUNx.jpeg", use_container_width=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
