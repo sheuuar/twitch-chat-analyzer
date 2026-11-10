@@ -64,6 +64,11 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guide")
 st.sidebar.markdown("1. Export chat from your VOD using [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).\n2. Upload the `.txt` log file below.\n3. Instantly review peak engagement timestamps.")
 
+# --- MAIN HERO BANNER IMAGE INTEGRATION ---
+st.image("https://i.imgur.com/TPP6K2c.png", use_column_width=True)
+st.divider()
+# ----------------------------------------
+
 # Hero Section Header
 st.markdown('<p class="hero-title">🔥 Stream Chat Highlight Analyzer</p>', unsafe_allow_html=True)
 st.markdown('<p class="hero-subtitle">Automated volume-spike detection to find elite VOD timestamps and chat peaks instantly — free, no signup required.</p>', unsafe_allow_html=True)
