@@ -2,14 +2,15 @@ import streamlit as st
 from collections import defaultdict
 import pandas as pd
 import os
+import re
 
-# Force moviepy to use imageio-ffmpeg built-in binaries for cloud compatibility
+# Force moviepy to use imageio-ffmpeg built-in binaries when available
 try:
     import imageio_ffmpeg
     os.environ["IMAGEIO_FFMPEG_EXE"] = imageio_ffmpeg.get_ffmpeg_exe()
     from moviepy.editor import VideoFileClip
     MOVIEPY_AVAILABLE = True
-except Exception as e:
+except Exception:
     MOVIEPY_AVAILABLE = False
 
 # Page Configuration
@@ -61,6 +62,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+def extract_vod_id(vod_input: str) -> str:
+    """Extracts a numeric Twitch VOD ID from a full URL or raw ID string."""
+    if not vod_input:
+        return ""
+    cleaned = vod_input.strip()
+    if cleaned.isdigit():
+        return cleaned
+    match = re.search(r"twitch\.tv/videos/(\d+)", cleaned)
+    return match.group(1) if match else ""
+
+
+def format_twitch_time(total_seconds: int) -> str:
+    """Formats seconds into Twitch's ?t=XhYmZs query format."""
+    hrs = total_seconds // 3600
+    mins = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    return f"{hrs}h{mins}m{secs}s"
+
+
+if "preview_start_sec" not in st.session_state:
+    st.session_state.preview_start_sec = 0
+
+if "highlight_timestamps" not in st.session_state:
+    st.session_state.highlight_timestamps = []
+
 # Sidebar settings for user control (Clean & Minimal)
 st.sidebar.header("⚙️ Analyzer Parameters")
 top_n = st.sidebar.slider("Number of highlights to display", min_value=5, max_value=50, value=25)
@@ -68,7 +95,7 @@ time_window = st.sidebar.slider("Deduplication window (minutes)", min_value=1, m
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 Quick Guides")
-st.sidebar.markdown("1. **Chat Analyzer:** Export chat via [TwitchDownloader](https://github.com/Lay295/TwitchDownloader) and upload log above.\n2. **Video Cutter:** Paste peak timestamps into the editor below to slice clips.")
+st.sidebar.markdown("1. **Chat Analyzer:** Export chat via TwitchDownloader and upload log above.\n2. **Preview & Cut:** Jump straight to peak moments or slice clips below.")
 
 # --- PRIMARY BANNER IMAGE AT THE TOP ---
 st.image("https://i.imgur.com/pBPB0dC.jpeg", use_container_width=True)
@@ -98,7 +125,7 @@ with col_f3:
     st.markdown("""
         <div class="feature-card">
             <div class="feature-title">✂️ Video Clip Editor</div>
-            <div class="feature-desc">Trim VOD segments directly into standalone MP4 files for TikTok and YouTube Shorts.</div>
+            <div class="feature-desc">Preview peak moments directly and trim VOD segments into standalone MP4 files.</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -113,7 +140,7 @@ with st.expander("📖 How to Get Your Twitch Chat Log (Click to view guide)", e
     st.markdown("""
     ### Requirements & Workflow:
     Because Twitch blocks cloud servers from downloading live VOD chat logs automatically, follow these quick steps:
-    1. **Download the tool:** Get the free, open-source desktop app [TwitchDownloader](https://github.com/Lay295/TwitchDownloader).
+    1. **Download the tool:** Get the free, open-source desktop app TwitchDownloader.
     2. **Export Chat:** Paste your Twitch VOD URL into TwitchDownloader and export the chat log as a standard `.txt` file.
     3. **Upload & Analyze:** Drop your exported `.txt` chat log file into the uploader below to instantly extract top timestamps.
     """)
@@ -122,6 +149,12 @@ st.markdown("---")
 
 # Main File Upload Section
 st.markdown("### 📂 Load Chat Log Data")
+vod_url_input = st.text_input(
+    "Optional: Twitch VOD URL or ID (adds clickable timestamp links to your highlight table)",
+    placeholder="https://www.twitch.tv/videos/1234567890"
+)
+vod_id = extract_vod_id(vod_url_input)
+
 uploaded_file = st.file_uploader("Upload your Twitch chat log (.txt)", type=["txt"])
 
 content = None
@@ -172,6 +205,7 @@ if content is not None and len(content) > 0:
         
         shown_blocks = set()
         table_data = []
+        extracted_timestamps = []
         report_text = f"🔥 TOP {top_n} UNIQUE VOD PEAK TIMESTAMPS:\n\n"
 
         for minute_mark, count in sorted_peaks:
@@ -180,28 +214,44 @@ if content is not None and len(content) > 0:
                 
             hrs = minute_mark // 60
             mins = minute_mark % 60
+            total_sec = minute_mark * 60
             
             timestamp_str = f"{hrs:02d}:{mins:02d}:00"
-            table_data.append({"Rank": len(table_data) + 1, "VOD Timestamp": timestamp_str, "Message Volume": count})
+            extracted_timestamps.append(timestamp_str)
+
+            row_dict = {
+                "Rank": len(table_data) + 1,
+                "VOD Timestamp": timestamp_str,
+                "Message Volume": count,
+            }
+            if vod_id:
+                row_dict["Twitch Link"] = f"https://www.twitch.tv/videos/{vod_id}?t={format_twitch_time(total_sec)}"
+
+            table_data.append(row_dict)
             report_text += f"- VOD Time: {timestamp_str} — {count} messages\n"
             
             shown_blocks.add(minute_mark)
             if len(table_data) >= top_n:
                 break
 
+        st.session_state.highlight_timestamps = extracted_timestamps
+
         with col2:
             st.metric(label="⚡ Highlights Extracted", value=f"{len(table_data)}")
         
         st.markdown("### 📊 Top VOD Peak Timestamps")
         
-        # Present data inside an interactive, clean data table
         df_peaks = pd.DataFrame(table_data)
-        st.dataframe(df_peaks, use_container_width=True, hide_index=True)
+        column_config = {}
+        if vod_id:
+            column_config["Twitch Link"] = st.column_config.LinkColumn(
+                "Twitch Link",
+                display_text="Watch Moment ↗"
+            )
+        st.dataframe(df_peaks, use_container_width=True, hide_index=True, column_config=column_config)
 
-        # Success celebration effect
         st.balloons()
 
-        # Download Report Button
         st.download_button(
             label="📥 Download Highlight Report (.txt)",
             data=report_text,
@@ -219,19 +269,18 @@ st.markdown("---")
 
 st.markdown("""
     <div style="text-align: center; margin-bottom: 1.5rem;">
-        <h2 style="color: #ffffff;">✂️ Video Clip Editor</h2>
-        <p style="color: #9ca3af;">Transform your raw VOD files into crisp vertical clips or highlights instantly.</p>
+        <h2 style="color: #ffffff;">✂️ Video Clip Editor & Highlight Player</h2>
+        <p style="color: #9ca3af;">Jump straight to detected chat peaks or trim VOD segments into standalone MP4 files.</p>
     </div>
 """, unsafe_allow_html=True)
 
-# Video Editor Workflow Guide Box
-with st.expander("📖 How to Use the Video Clip Editor (Click to view guide)", expanded=True):
+with st.expander("📖 How to Use the Highlight Player & Clip Editor (Click to view guide)", expanded=True):
     st.markdown("""
     ### Requirements & Workflow:
-    Turn your detected chat peaks into ready-to-publish short-form videos in seconds:
+    Preview detected moments or slice clips in a few quick steps:
     1. **Upload Raw VOD:** Drop your downloaded full-stream `.mp4` or `.mov` file into the video uploader.
-    2. **Set Duration & Timestamp:** Adjust your preferred clip length slider, then copy a peak timestamp from your chat analysis above (format: `HH:MM:SS`).
-    3. **Cut & Export:** Click **Cut & Export MP4 Clip** to automatically slice out the exact highlight, preview it live, and download your clean MP4 file.
+    2. **Jump to a Moment:** Pick a peak timestamp (or enter any `HH:MM:SS` time) and click **Play Highlight Moment** to start the video right at that timestamp.
+    3. **Cut & Export (Optional):** Set your clip duration and click **Cut & Export MP4 Clip** if video rendering is enabled in your environment.
     """)
 
 with st.container():
@@ -248,29 +297,50 @@ with st.container():
         with open(video_filename, "wb") as f:
             f.write(uploaded_video.getbuffer())
         
-        st.success("✅ VOD loaded and ready for editing!")
-        
-        # Timestamp input for cutting
-        col_t1, col_t2 = st.columns(2)
+        st.success("✅ VOD loaded and ready!")
+
+        available_ts = st.session_state.highlight_timestamps
+        default_ts = available_ts[0] if available_ts else "00:00:00"
+
+        col_t1, col_t2, col_t3 = st.columns([2, 1, 1])
         with col_t1:
-            clip_time_input = st.text_input("Enter Timestamp to Clip (Format: HH:MM:SS)", value="00:00:00")
-        
+            if available_ts:
+                selected_peak = st.selectbox("Detected peak timestamps", options=available_ts, key="peak_jump_select")
+                clip_time_input = st.text_input("Timestamp to Jump / Clip (HH:MM:SS)", value=selected_peak)
+            else:
+                clip_time_input = st.text_input("Timestamp to Jump / Clip (HH:MM:SS)", value=default_ts)
+
         with col_t2:
             st.markdown("<br>", unsafe_allow_html=True)
+            play_btn = st.button("▶️ Play Highlight Moment", use_container_width=True)
+
+        with col_t3:
+            st.markdown("<br>", unsafe_allow_html=True)
             generate_btn = st.button("🎬 Cut & Export MP4 Clip", use_container_width=True)
+
+        if play_btn:
+            try:
+                h, m, s = map(int, clip_time_input.strip().split(":"))
+                target_sec = max(0, h * 3600 + m * 60 + s)
+                st.session_state.preview_start_sec = target_sec
+            except Exception:
+                st.error("Please enter a valid timestamp in HH:MM:SS format (for example, 00:16:00).")
+
+        st.markdown(f"#### ▶️ Highlight Preview (Starting at `{st.session_state.preview_start_sec}s`)")
+        st.video(video_filename, start_time=st.session_state.preview_start_sec)
         
         if generate_btn:
             if not MOVIEPY_AVAILABLE:
-                st.error("⚠️ Video processing packages are not initialized. Please ensure `imageio-ffmpeg` and `moviepy` are in your requirements.txt.")
+                st.error("⚠️ Server-side video rendering (`moviepy`) is unavailable in this cloud environment. Use the **Play Highlight Moment** player above to preview peaks directly in the browser.")
             else:
                 try:
-                    h, m, s = map(int, clip_time_input.split(":"))
+                    h, m, s = map(int, clip_time_input.strip().split(":"))
                     target_sec = h * 3600 + m * 60 + s
                     
-                    start_time = max(0, target_sec - 5) # 5 seconds buffer before spike
+                    start_time = max(0, target_sec - 5)
                     end_time = target_sec + clip_duration
                     
-                    output_clip_name = f"highlight_{clip_time_input.replace(':', '_')}.mp4"
+                    output_clip_name = f"highlight_{clip_time_input.strip().replace(':', '_')}.mp4"
                     
                     with st.spinner("Processing your clip... Please wait."):
                         with VideoFileClip(video_filename) as video:
